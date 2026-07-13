@@ -161,6 +161,41 @@ body {
 .btn-login:hover { opacity: 0.88; }
 .btn-login:active { transform: scale(0.99); }
 
+.btn-refresh {
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 11px 13px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn-refresh:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  background: var(--bg);
+}
+
+.btn-refresh:disabled { cursor: wait; opacity: 0.6; }
+
+.sync-status {
+  min-height: 18px;
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.sync-status[data-state="success"] { color: #35704a; }
+.sync-status[data-state="error"] { color: #a45535; }
+
 .hint {
   text-align: center;
   font-size: 13px;
@@ -223,6 +258,19 @@ body {
   transition: color 0.15s, border-color 0.15s;
 }
 .btn-logout:hover { color: var(--text-primary); border-color: var(--text-primary); }
+
+.btn-sync-top {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  padding: 5px 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-sync-top:hover { color: var(--text-primary); }
+.btn-sync-top:disabled { cursor: wait; opacity: 0.6; }
 
 .main {
   max-width: 780px;
@@ -515,9 +563,11 @@ body {
     </div>
 
     <button class="btn-login" onclick="login()">Ver mis cursos →</button>
+    <button class="btn-refresh" id="refreshButton" type="button" onclick="refreshPortalData({manual:true})">↻ Actualizar fechas</button>
+    <div class="sync-status" id="dataStatus" role="status" aria-live="polite">Cargando la información más reciente…</div>
   </div>
 
-  <p class="hint">Los datos se actualizan mensualmente desde administración.</p>
+  <p class="hint">Las fechas se consultan automáticamente desde administración.</p>
 </div>
 
 <!-- ══ DASHBOARD ══ -->
@@ -529,6 +579,7 @@ body {
     </div>
     <div class="topbar-right">
       <span class="user-chip" id="topbarName"></span>
+      <button class="btn-sync-top" id="refreshButtonTop" type="button" onclick="refreshPortalData({manual:true})" aria-label="Actualizar fechas">↻ Actualizar</button>
       <button class="btn-logout" onclick="logout()">Salir</button>
     </div>
   </nav>
@@ -546,16 +597,141 @@ body {
   <div class="page-footer">Datos cargados por administración · <span id="footerDate"></span></div>
 </div>
 
+<script src="config.js"></script>
 <script>
 const DATA = {"Viviana Cragnolini": [{"sede": "Córdoba", "profe": "Viviana Cragnolini", "codigo": "IEDOMI", "horario": "MA-18:00-20:00", "total_clases": 16, "clases_dadas": 16, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-10-14", "fin": "2026-02-10", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Viviana Cragnolini", "codigo": "IEDOMI", "horario": "MA-20:00-22:00", "total_clases": 17, "clases_dadas": 17, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-24", "fin": "2026-06-23", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Viviana Cragnolini", "codigo": "IEDOMI", "horario": "MA-18:00-20:00", "total_clases": 16, "clases_dadas": 11, "clases_pendientes": 5, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-04-21", "fin": "2026-08-04", "porcentaje": 69}, {"sede": "Córdoba", "profe": "Viviana Cragnolini", "codigo": "IEDOMI", "horario": "JU-18:00-20:00", "total_clases": 16, "clases_dadas": 2, "clases_pendientes": 14, "proximas_fechas": ["2026-07-16", "2026-07-30", "2026-08-06", "2026-08-13"], "inicio": "2026-06-25", "fin": "2026-10-22", "porcentaje": 12}], "Adriana Lipari": [{"sede": "Córdoba", "profe": "Adriana Lipari", "codigo": "LENCER", "horario": "MI-18:00-20:00", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-01-14", "fin": "2025-04-08", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Adriana Lipari", "codigo": "MOLDER", "horario": "MA-18:00-20:00", "total_clases": 21, "clases_dadas": 21, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-01-06", "fin": "2026-06-02", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Adriana Lipari", "codigo": "MOLDER", "horario": "SA-09:00-11:00", "total_clases": 20, "clases_dadas": 16, "clases_pendientes": 4, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-02-21", "fin": "2026-08-01", "porcentaje": 80}, {"sede": "Córdoba", "profe": "Adriana Lipari", "codigo": "MOLDER", "horario": "LU-18:00-20:00", "total_clases": 20, "clases_dadas": 16, "clases_pendientes": 4, "proximas_fechas": ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"], "inicio": "2026-02-23", "fin": "2026-07-27", "porcentaje": 80}, {"sede": "Córdoba", "profe": "Adriana Lipari", "codigo": "MOLDER", "horario": "VI-18:00-20:00", "total_clases": 20, "clases_dadas": 13, "clases_pendientes": 7, "proximas_fechas": ["2026-07-03", "2026-07-17", "2026-07-24", "2026-07-31"], "inicio": "2026-03-20", "fin": "2026-08-21", "porcentaje": 65}, {"sede": "Córdoba", "profe": "Adriana Lipari", "codigo": "MOLDER", "horario": "MA-18:00-20:00", "total_clases": 20, "clases_dadas": 2, "clases_pendientes": 18, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-06-23", "fin": "2026-11-03", "porcentaje": 10}], "German Frassia": [{"sede": "Córdoba", "profe": "German Frassia", "codigo": "EHCAT3", "horario": "SA-09:00-13:00", "total_clases": 7, "clases_dadas": 7, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-11-08", "fin": "2026-02-28", "porcentaje": 100}, {"sede": "Córdoba", "profe": "German Frassia", "codigo": "EHCAT3", "horario": "SA-09:00-13:00", "total_clases": 16, "clases_dadas": 16, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-11-12", "fin": "2026-04-01", "porcentaje": 100}], "Dario Aramburu": [{"sede": "Córdoba", "profe": "Dario Aramburu", "codigo": "MUEBLE", "horario": "MA-20:00-22:00", "total_clases": 11, "clases_dadas": 11, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-11-25", "fin": "2026-02-17", "porcentaje": 100}], "Hector Villarreal": [{"sede": "Córdoba", "profe": "Hector Villarreal", "codigo": "MICROB", "horario": "SA-09:00-13:00", "total_clases": 6, "clases_dadas": 6, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2025-12-13", "fin": "2026-01-17", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hector Villarreal", "codigo": "MICROB", "horario": "SA-09:00-13:00", "total_clases": 6, "clases_dadas": 6, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-21", "fin": "2026-03-28", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hector Villarreal", "codigo": "MICROB", "horario": "SA-09:00-13:00", "total_clases": 6, "clases_dadas": 6, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-05-09", "fin": "2026-06-13", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hector Villarreal", "codigo": "MICROB", "horario": "SA-09:00-13:00", "total_clases": 6, "clases_dadas": 0, "clases_pendientes": 6, "proximas_fechas": ["2026-07-25", "2026-08-01", "2026-08-08", "2026-08-15"], "inicio": "2026-07-25", "fin": "2026-08-29", "porcentaje": 0}], "Fernando Avellaneda": [{"sede": "Córdoba", "profe": "Fernando Avellaneda", "codigo": "INSAIR", "horario": "SA-09:00-11:30", "total_clases": 8, "clases_dadas": 8, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-01-17", "fin": "2026-03-14", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Fernando Avellaneda", "codigo": "AIRACO", "horario": "SA-09:00-12:00", "total_clases": 20, "clases_dadas": 8, "clases_pendientes": 12, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-04-25", "fin": "2026-09-26", "porcentaje": 40}, {"sede": "Córdoba", "profe": "Fernando Avellaneda", "codigo": "HELADE", "horario": "MI-19:00-21:00", "total_clases": 20, "clases_dadas": 9, "clases_pendientes": 11, "proximas_fechas": ["2026-07-08", "2026-07-15", "2026-07-22", "2026-07-29"], "inicio": "2026-04-29", "fin": "2026-09-16", "porcentaje": 45}], "Alejandro Herrera": [{"sede": "Córdoba", "profe": "Alejandro Herrera", "codigo": "PLOMER", "horario": "MA-18:30-20:30", "total_clases": 19, "clases_dadas": 19, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-01-20", "fin": "2026-06-02", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Alejandro Herrera", "codigo": "PLOMER", "horario": "MI-18:30-20:30", "total_clases": 16, "clases_dadas": 16, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-25", "fin": "2026-06-10", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Alejandro Herrera", "codigo": "PLOMER", "horario": "MA-18:30-20:30", "total_clases": 16, "clases_dadas": 5, "clases_pendientes": 11, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-06-02", "fin": "2026-09-15", "porcentaje": 31}, {"sede": "Córdoba", "profe": "Alejandro Herrera", "codigo": "PLOMER", "horario": "MI-18:30-20:30", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-08-05", "2026-08-12", "2026-08-19", "2026-08-26"], "inicio": "2026-08-05", "fin": "2026-11-18", "porcentaje": 0}], "Hugo Monje": [{"sede": "Córdoba", "profe": "Hugo Monje", "codigo": "SOLDAD", "horario": "VI-19:00-21:30", "total_clases": 14, "clases_dadas": 14, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-01-23", "fin": "2026-05-15", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hugo Monje", "codigo": "SOLDAD", "horario": "VI-09:30-12:00", "total_clases": 14, "clases_dadas": 14, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-01-23", "fin": "2026-05-15", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hugo Monje", "codigo": "SOLDAD", "horario": "LU-19:00-21:30", "total_clases": 13, "clases_dadas": 13, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-03-09", "fin": "2026-06-29", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hugo Monje", "codigo": "SOLDAD", "horario": "JU-19:00-21:30", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-04-16", "fin": "2026-07-02", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Hugo Monje", "codigo": "SOLDAD", "horario": "LU-19:00-21:30", "total_clases": 12, "clases_dadas": 0, "clases_pendientes": 12, "proximas_fechas": ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"], "inicio": "2026-07-06", "fin": "2026-09-21", "porcentaje": 0}], "Gerardo Pedraza": [{"sede": "Carlos Paz", "profe": "Gerardo Pedraza", "codigo": "IEDOMI", "horario": "SA-09:00-11:00", "total_clases": 16, "clases_dadas": 16, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-14", "fin": "2026-06-27", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Gerardo Pedraza", "codigo": "EHCAT3", "horario": "SA-11:00-14:00", "total_clases": 19, "clases_dadas": 16, "clases_pendientes": 3, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25"], "inicio": "2026-02-14", "fin": "2026-07-25", "porcentaje": 84}, {"sede": "Córdoba", "profe": "Gerardo Pedraza", "codigo": "EHCAT3", "horario": "MA-18:30-21:30", "total_clases": 23, "clases_dadas": 15, "clases_pendientes": 8, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-03-17", "fin": "2026-08-25", "porcentaje": 65}, {"sede": "Carlos Paz", "profe": "Gerardo Pedraza", "codigo": "IEDOMI", "horario": "SA-09:00-11:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-07-04", "fin": "2026-10-24", "porcentaje": 0}], "Javier Castro": [{"sede": "Carlos Paz", "profe": "Javier Castro", "codigo": "SOLDAD", "horario": "SA-09:00-11:30", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-14", "fin": "2026-05-16", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Javier Castro", "codigo": "SOLDAD", "horario": "SA-11:30-14:00", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-28", "fin": "2026-05-30", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Javier Castro", "codigo": "SOLDAD", "horario": "SA-09:00-11:30", "total_clases": 12, "clases_dadas": 5, "clases_pendientes": 7, "proximas_fechas": ["2026-07-18", "2026-07-25", "2026-08-01", "2026-08-08"], "inicio": "2026-05-23", "fin": "2026-08-29", "porcentaje": 42}, {"sede": "Carlos Paz", "profe": "Javier Castro", "codigo": "SOLDAD", "horario": "SA-11:30-14:00", "total_clases": 12, "clases_dadas": 0, "clases_pendientes": 12, "proximas_fechas": ["2026-07-18", "2026-07-25", "2026-08-01", "2026-08-08"], "inicio": "2026-07-18", "fin": "2026-10-03", "porcentaje": 0}], "Leo Rodriguez": [{"sede": "Carlos Paz", "profe": "Leo Rodriguez", "codigo": "AIRACO", "horario": "SA-09:00-12:00", "total_clases": 20, "clases_dadas": 16, "clases_pendientes": 4, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-02-14", "fin": "2026-08-01", "porcentaje": 80}, {"sede": "Carlos Paz", "profe": "Leo Rodriguez", "codigo": "INSAIR", "horario": "SA-12:00-14:00", "total_clases": 10, "clases_dadas": 10, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-21", "fin": "2026-05-16", "porcentaje": 100}], "Valentin Paolini": [{"sede": "Córdoba", "profe": "Valentin Paolini", "codigo": "IMPR3D", "horario": "JU-18:00-21:00", "total_clases": 9, "clases_dadas": 9, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-19", "fin": "2026-05-07", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Valentin Paolini", "codigo": "IMPR3D", "horario": "JU-18:00-21:00", "total_clases": 8, "clases_dadas": 4, "clases_pendientes": 4, "proximas_fechas": ["2026-07-16", "2026-07-30", "2026-08-06", "2026-08-13"], "inicio": "2026-06-04", "fin": "2026-08-13", "porcentaje": 50}, {"sede": "Córdoba", "profe": "Valentin Paolini", "codigo": "IMPR3D", "horario": "JU-18:00-21:00", "total_clases": 8, "clases_dadas": 0, "clases_pendientes": 8, "proximas_fechas": ["2026-08-06", "2026-08-13", "2026-08-20", "2026-08-27"], "inicio": "2026-08-06", "fin": "2026-09-24", "porcentaje": 0}], "Facundo Lujan": [{"sede": "Carlos Paz", "profe": "Facundo Lujan", "codigo": "MUEBLE", "horario": "SA-09:00-11:00", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-21", "fin": "2026-05-23", "porcentaje": 100}, {"sede": "Carlos Paz", "profe": "Facundo Lujan", "codigo": "MUEBLE", "horario": "SA-11:30-13:30", "total_clases": 12, "clases_dadas": 8, "clases_pendientes": 4, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-04-25", "fin": "2026-08-01", "porcentaje": 67}, {"sede": "Carlos Paz", "profe": "Facundo Lujan", "codigo": "MUEBLE", "horario": "SA-09:00-11:00", "total_clases": 12, "clases_dadas": 1, "clases_pendientes": 11, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-06-27", "fin": "2026-09-19", "porcentaje": 8}], "Gian Ariola": [{"sede": "Carlos Paz", "profe": "Gian Ariola", "codigo": "MECMOT", "horario": "SA-09:00-11:30", "total_clases": 18, "clases_dadas": 16, "clases_pendientes": 2, "proximas_fechas": ["2026-07-04", "2026-07-18"], "inicio": "2026-02-21", "fin": "2026-07-18", "porcentaje": 89}, {"sede": "Carlos Paz", "profe": "Gian Ariola", "codigo": "MECMOT", "horario": "SA-11:30-14:00", "total_clases": 16, "clases_dadas": 14, "clases_pendientes": 2, "proximas_fechas": ["2026-07-04", "2026-07-18"], "inicio": "2026-03-07", "fin": "2026-07-18", "porcentaje": 88}, {"sede": "Remedios de escalada", "profe": "Gian Ariola", "codigo": "INYMOT", "horario": "JU-20:00-22:00", "total_clases": 8, "clases_dadas": 3, "clases_pendientes": 5, "proximas_fechas": ["2026-07-16", "2026-07-23", "2026-07-30", "2026-08-06"], "inicio": "2026-06-18", "fin": "2026-08-13", "porcentaje": 38}, {"sede": "Carlos Paz", "profe": "Gian Ariola", "codigo": "MECMOT", "horario": "SA-09:00-11:30", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-07-18", "2026-07-25", "2026-08-01", "2026-08-08"], "inicio": "2026-07-18", "fin": "2026-10-31", "porcentaje": 0}], "Sergio Morales": [{"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "CERRAJ", "horario": "LU-18:00-20:00", "total_clases": 12, "clases_dadas": 12, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-23", "fin": "2026-06-01", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "MUEBLE", "horario": "MA-18:00-20:00", "total_clases": 13, "clases_dadas": 13, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-02-24", "fin": "2026-06-02", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "MUEBLE", "horario": "SA-11:00-13:00", "total_clases": 12, "clases_dadas": 10, "clases_pendientes": 2, "proximas_fechas": ["2026-07-04", "2026-07-18"], "inicio": "2026-04-11", "fin": "2026-07-18", "porcentaje": 83}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "CERRAJ", "horario": "LU-20:00-22:00", "total_clases": 12, "clases_dadas": 5, "clases_pendientes": 7, "proximas_fechas": ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"], "inicio": "2026-05-11", "fin": "2026-08-24", "porcentaje": 42}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "MUEBLE", "horario": "MA-20:00-22:00", "total_clases": 12, "clases_dadas": 8, "clases_pendientes": 4, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-04-28", "fin": "2026-07-28", "porcentaje": 67}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "MUEBLE", "horario": "MA-18:00-20:00", "total_clases": 12, "clases_dadas": 3, "clases_pendientes": 9, "proximas_fechas": ["2026-07-07", "2026-07-14", "2026-07-21", "2026-07-28"], "inicio": "2026-06-09", "fin": "2026-09-01", "porcentaje": 25}, {"sede": "Córdoba", "profe": "Sergio Morales", "codigo": "CERRAJ", "horario": "LU-18:00-20:00", "total_clases": 12, "clases_dadas": 0, "clases_pendientes": 12, "proximas_fechas": ["2026-07-06", "2026-07-13", "2026-07-20", "2026-07-27"], "inicio": "2026-07-06", "fin": "2026-09-21", "porcentaje": 0}], "Jeremias Maldonado": [{"sede": "Carlos Paz", "profe": "Jeremias Maldonado", "codigo": "PLOMER", "horario": "SA-09:00-11:00", "total_clases": 17, "clases_dadas": 15, "clases_pendientes": 2, "proximas_fechas": ["2026-07-04", "2026-07-18"], "inicio": "2026-02-28", "fin": "2026-07-18", "porcentaje": 88}, {"sede": "Carlos Paz", "profe": "Jeremias Maldonado", "codigo": "PLOMER", "horario": "SA-11:00-13:00", "total_clases": 16, "clases_dadas": 8, "clases_pendientes": 8, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-04-25", "fin": "2026-08-29", "porcentaje": 50}], "Fernando Bertinotti": [{"sede": "Córdoba", "profe": "Fernando Bertinotti", "codigo": "AIRACO", "horario": "SA-09:00-12:00", "total_clases": 20, "clases_dadas": 12, "clases_pendientes": 8, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-03-21", "fin": "2026-08-29", "porcentaje": 60}, {"sede": "Córdoba", "profe": "Fernando Bertinotti", "codigo": "INSAIR", "horario": "SA-12:00-14:00", "total_clases": 8, "clases_dadas": 8, "clases_pendientes": 0, "proximas_fechas": [], "inicio": "2026-03-14", "fin": "2026-05-16", "porcentaje": 100}, {"sede": "Córdoba", "profe": "Fernando Bertinotti", "codigo": "AIRACO", "horario": "JU-18:00-21:00", "total_clases": 20, "clases_dadas": 6, "clases_pendientes": 14, "proximas_fechas": ["2026-07-16", "2026-07-23", "2026-07-30", "2026-08-06"], "inicio": "2026-05-28", "fin": "2026-10-15", "porcentaje": 30}, {"sede": "Córdoba", "profe": "Fernando Bertinotti", "codigo": "INSAIRE", "horario": "SA-12:00-14:00", "total_clases": 8, "clases_dadas": 2, "clases_pendientes": 6, "proximas_fechas": ["2026-07-04", "2026-07-18", "2026-07-25", "2026-08-01"], "inicio": "2026-06-13", "fin": "2026-08-15", "porcentaje": 25}], "Soledad Llepeue": [{"sede": "Córdoba", "profe": "Soledad Llepeue", "codigo": "FACTME", "horario": "MA-18:00-20:00", "total_clases": 16, "clases_dadas": 15, "clases_pendientes": 1, "proximas_fechas": ["2026-07-07"], "inicio": "2026-03-10", "fin": "2026-07-07", "porcentaje": 94}, {"sede": "Córdoba", "profe": "Soledad Llepeue", "codigo": "FACTME", "horario": "MA-18:00-20:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-07-21", "2026-07-28", "2026-08-04", "2026-08-11"], "inicio": "2026-07-21", "fin": "2026-11-03", "porcentaje": 0}], "Vanesa Acosta": [{"sede": "Córdoba", "profe": "Vanesa Acosta", "codigo": "AUXFAR", "horario": "MA-20:00-22:00", "total_clases": 17, "clases_dadas": 16, "clases_pendientes": 1, "proximas_fechas": ["2026-07-07"], "inicio": "2026-03-10", "fin": "2026-07-07", "porcentaje": 94}, {"sede": "Córdoba", "profe": "Vanesa Acosta", "codigo": "FACTME", "horario": "SA-09:00-11:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-08-08", "2026-08-15", "2026-08-22", "2026-08-29"], "inicio": "2026-08-08", "fin": "2026-11-21", "porcentaje": 0}, {"sede": "Córdoba", "profe": "Vanesa Acosta", "codigo": "AUXFAR", "horario": "MI-18:00-20:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-08-12", "2026-08-19", "2026-08-26", "2026-09-02"], "inicio": "2026-08-12", "fin": "2026-11-25", "porcentaje": 0}, {"sede": "Córdoba", "profe": "Vanesa Acosta", "codigo": "AUXFAR", "horario": "SA-11:00-13:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-08-08", "2026-08-15", "2026-08-22", "2026-08-29"], "inicio": "2026-08-08", "fin": "2026-11-21", "porcentaje": 0}, {"sede": "Remedios de escalada", "profe": "Vanesa Acosta", "codigo": "FACTME", "horario": "JU-18:00-20:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-07-16", "2026-07-23", "2026-07-30", "2026-08-06"], "inicio": "2026-07-16", "fin": "2026-10-29", "porcentaje": 0}, {"sede": "Remedios de escalada", "profe": "Vanesa Acosta", "codigo": "AUXFAR", "horario": "JU-20:00-22:00", "total_clases": 16, "clases_dadas": 0, "clases_pendientes": 16, "proximas_fechas": ["2026-07-16", "2026-07-23", "2026-07-30", "2026-08-06"], "inicio": "2026-07-16", "fin": "2026-10-29", "porcentaje": 0}], "Matias Cisterna": [{"sede": "Córdoba", "profe": "Matias Cisterna", "codigo": "PROCNC", "horario": "MI-18:00-20:00", "total_clases": 12, "clases_dadas": 10, "clases_pendientes": 2, "proximas_fechas": ["2026-07-08", "2026-07-15"], "inicio": "2026-04-22", "fin": "2026-07-15", "porcentaje": 83}], "Tony Benito Mosse": [{"sede": "Carlos Paz", "profe": "Tony Benito Mosse", "codigo": "SOLDAD", "horario": "SA-09:00-11:30", "total_clases": 12, "clases_dadas": 10, "clases_pendientes": 2, "proximas_fechas": ["2026-07-04", "2026-07-18"], "inicio": "2026-04-11", "fin": "2026-07-18", "porcentaje": 83}]};
 
+const PORTAL_CONFIG = window.PORTAL_CONFIG || {};
+const DATA_API_URL = String(PORTAL_CONFIG.dataUrl || '').trim();
+const CACHE_KEY = 'portal-docentes-data-v1';
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+let portalData = DATA;
+let dataUpdatedAt = null;
+let refreshInFlight = false;
+
+function isValidPortalData(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).length > 0 && Object.values(value).every(Array.isArray);
+}
+
+function readCachedData() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+    if (cached && isValidPortalData(cached.data)) {
+      portalData = cached.data;
+      dataUpdatedAt = cached.updatedAt || null;
+    }
+  } catch (_) {
+    // The embedded data remains available when storage is blocked or invalid.
+  }
+}
+
+function setSyncStatus(message, state) {
+  const status = document.getElementById('dataStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = state || '';
+}
+
+function setRefreshBusy(busy) {
+  ['refreshButton', 'refreshButtonTop'].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = busy;
+  });
+}
+
+function formatSyncTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return 'recién';
+  return date.toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function requestPortalPayload(url, {forceRefresh = false} = {}) {
+  return new Promise((resolve, reject) => {
+    const callbackName = '__portalDocentesReceive';
+    const script = document.createElement('script');
+    const separator = url.includes('?') ? '&' : '?';
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Tiempo de espera agotado'));
+    }, 15000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      script.remove();
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+    }
+
+    window[callbackName] = payload => {
+      cleanup();
+      resolve(payload);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('No se pudo cargar la fuente de datos'));
+    };
+    const refreshParam = forceRefresh ? '&refresh=1' : '';
+    script.src = `${url}${separator}callback=${callbackName}${refreshParam}&v=${Date.now()}`;
+    document.head.appendChild(script);
+  });
+}
+
+async function refreshPortalData({manual = false} = {}) {
+  if (refreshInFlight) return false;
+  if (!DATA_API_URL) {
+    if (manual) setSyncStatus('La fuente automática todavía no está configurada.', 'error');
+    else setSyncStatus('Mostrando la última versión disponible.', '');
+    return false;
+  }
+
+  refreshInFlight = true;
+  setRefreshBusy(true);
+  if (manual) setSyncStatus('Actualizando fechas…', '');
+
+  try {
+    const payload = await requestPortalPayload(DATA_API_URL, {forceRefresh: manual});
+    const nextData = payload && payload.data ? payload.data : payload;
+    if (!isValidPortalData(nextData)) throw new Error('Respuesta de datos inválida');
+
+    const selectedTeacher = sel.value;
+    portalData = nextData;
+    dataUpdatedAt = payload.updatedAt || new Date().toISOString();
+    localStorage.setItem(CACHE_KEY, JSON.stringify({data: portalData, updatedAt: dataUpdatedAt}));
+    populateTeacherSelect(selectedTeacher);
+
+    const activeTeacher = document.getElementById('topbarName').textContent;
+    const appVisible = document.getElementById('appView').style.display === 'block';
+    if (appVisible && activeTeacher && portalData[activeTeacher]) renderDashboard(activeTeacher);
+
+    setSyncStatus(`Fechas actualizadas: ${formatSyncTime(dataUpdatedAt)}`, 'success');
+    return true;
+  } catch (error) {
+    console.error('No se pudieron actualizar los datos del portal.', error);
+    setSyncStatus('No se pudo conectar. Se mantiene la última versión disponible.', 'error');
+    return false;
+  } finally {
+    refreshInFlight = false;
+    setRefreshBusy(false);
+  }
+}
+
 // Populate select
 const sel = document.getElementById('profeSelect');
-Object.keys(DATA).sort().forEach(n => {
-  const o = document.createElement('option');
-  o.value = n; o.textContent = n;
-  sel.appendChild(o);
-});
+function populateTeacherSelect(selectedValue = '') {
+  sel.innerHTML = '<option value="">— Elegí tu nombre —</option>';
+  Object.keys(portalData).sort((a, b) => a.localeCompare(b, 'es')).forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+  if (selectedValue && portalData[selectedValue]) sel.value = selectedValue;
+}
+
+readCachedData();
+populateTeacherSelect();
 
 function fmtFecha(str) {
   const [y,m,d] = str.split('-');
@@ -583,9 +759,15 @@ function badgeFor(c) {
   return ['badge-active','En curso'];
 }
 
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  })[character]);
+}
+
 function sedeChip(sede) {
-  if (sede==='Carlos Paz') return `<span class="chip chip-cp">📍 Carlos Paz</span>`;
-  return `<span class="chip chip-cba">📍 Córdoba</span>`;
+  const chipClass = sede === 'Carlos Paz' ? 'chip-cp' : 'chip-cba';
+  return `<span class="chip ${chipClass}">📍 ${escapeHtml(sede)}</span>`;
 }
 
 function renderCard(c) {
@@ -604,9 +786,9 @@ function renderCard(c) {
   return `<div class="curso-card">
     <div class="card-top">
       <div class="card-left">
-        <div class="card-code">${c.codigo}</div>
+        <div class="card-code">${escapeHtml(c.codigo)}</div>
         <div class="card-meta">
-          <span class="chip chip-horario">⏰ ${c.horario}</span>
+          <span class="chip chip-horario">⏰ ${escapeHtml(c.horario)}</span>
           ${sedeChip(c.sede)}
           <span class="chip chip-dates">${fmtFecha(c.inicio)} → ${fmtFecha(c.fin)}</span>
         </div>
@@ -639,14 +821,14 @@ function logout() {
 }
 
 function renderDashboard(nombre) {
-  const cursos = DATA[nombre];
+  const cursos = portalData[nombre];
   const activos = cursos.filter(c => c.clases_pendientes > 0);
   const finalizados = cursos.filter(c => c.clases_pendientes === 0);
 
   document.getElementById('topbarName').textContent = nombre;
   document.getElementById('welcomeName').textContent = 'Hola, ' + nombre.split(' ')[0] + ' 👋';
 
-  const hoy = new Date();
+  const hoy = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date();
   document.getElementById('welcomeMeta').textContent =
     'Actualizado al ' + hoy.getDate() + '/' + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
   document.getElementById('footerDate').textContent =
@@ -684,6 +866,9 @@ function toggleFinished() {
   const open = cards.classList.toggle('visible');
   btn.classList.toggle('open', open);
 }
+
+refreshPortalData();
+window.setInterval(() => refreshPortalData(), REFRESH_INTERVAL_MS);
 </script>
 </body>
 </html>
