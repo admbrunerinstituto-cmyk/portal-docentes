@@ -1,0 +1,62 @@
+name: Actualizar datos del portal
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-datos-portal
+  cancel-in-progress: true
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Leer Pagos Docentes 2026
+        env:
+          DATA_URL: https://script.google.com/macros/s/AKfycbwjMwnRjNlV4XfSN-yzHBiGELMzNIUFibwOV4_kavYuyi1adqY7A0Lf0bv70yVZ3o25uw/exec
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const callback = '__portalDocentesReceive';
+          const url = `${process.env.DATA_URL}?callback=${callback}&refresh=1&v=${Date.now()}`;
+          const response = await fetch(url, { redirect: 'follow' });
+          if (!response.ok) throw new Error(`La fuente respondió HTTP ${response.status}`);
+
+          const text = await response.text();
+          const prefix = `${callback}(`;
+          const suffix = ');';
+          if (!text.startsWith(prefix) || !text.trimEnd().endsWith(suffix)) {
+            throw new Error('La fuente devolvió un formato inesperado');
+          }
+
+          const json = text.trim().slice(prefix.length, -suffix.length);
+          const payload = JSON.parse(json);
+          if (!payload || !payload.ok || !payload.data || !Object.keys(payload.data).length) {
+            throw new Error(payload && payload.error ? payload.error : 'La fuente no devolvió cursos');
+          }
+
+          const output = `window.PORTAL_LIVE_PAYLOAD = ${JSON.stringify(payload)};\n`;
+          fs.writeFileSync('data.js', output, 'utf8');
+          NODE
+
+      - name: Publicar cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Actualizar cursos y fechas del portal"
+          git push
