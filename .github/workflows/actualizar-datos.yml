@@ -30,26 +30,31 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const callback = '__portalDocentesReceive';
-          const url = `${process.env.DATA_URL}?callback=${callback}&refresh=1&v=${Date.now()}`;
-          const response = await fetch(url, { redirect: 'follow' });
-          if (!response.ok) throw new Error(`La fuente respondió HTTP ${response.status}`);
+          (async () => {
+            const callback = '__portalDocentesReceive';
+            const url = `${process.env.DATA_URL}?callback=${callback}&refresh=1&v=${Date.now()}`;
+            const response = await fetch(url, { redirect: 'follow' });
+            if (!response.ok) throw new Error(`La fuente respondió HTTP ${response.status}`);
 
-          const text = await response.text();
-          const prefix = `${callback}(`;
-          const suffix = ');';
-          if (!text.startsWith(prefix) || !text.trimEnd().endsWith(suffix)) {
-            throw new Error('La fuente devolvió un formato inesperado');
-          }
+            const text = await response.text();
+            const prefix = `${callback}(`;
+            const suffix = ');';
+            if (!text.startsWith(prefix) || !text.trimEnd().endsWith(suffix)) {
+              throw new Error('La fuente devolvió un formato inesperado');
+            }
 
-          const json = text.trim().slice(prefix.length, -suffix.length);
-          const payload = JSON.parse(json);
-          if (!payload || !payload.ok || !payload.data || !Object.keys(payload.data).length) {
-            throw new Error(payload && payload.error ? payload.error : 'La fuente no devolvió cursos');
-          }
+            const json = text.trim().slice(prefix.length, -suffix.length);
+            const payload = JSON.parse(json);
+            if (!payload || !payload.ok || !payload.data || !Object.keys(payload.data).length) {
+              throw new Error(payload && payload.error ? payload.error : 'La fuente no devolvió cursos');
+            }
 
-          const output = `window.PORTAL_LIVE_PAYLOAD = ${JSON.stringify(payload)};\n`;
-          fs.writeFileSync('data.js', output, 'utf8');
+            const output = `window.PORTAL_LIVE_PAYLOAD = ${JSON.stringify(payload)};\n`;
+            fs.writeFileSync('data.js', output, 'utf8');
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE
 
       - name: Publicar cambios
