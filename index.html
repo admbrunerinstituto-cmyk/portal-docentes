@@ -775,12 +775,12 @@ async function refreshPortalData({manual = false} = {}) {
   if (manual) setSyncStatus('Actualizando fechas…', '');
 
   try {
-    const hasPublishedPayload = Boolean(
-      window.PORTAL_LIVE_PAYLOAD && isValidPortalData(window.PORTAL_LIVE_PAYLOAD.data)
-    );
-    const payload = hasPublishedPayload
-      ? (manual ? await requestStaticPortalPayload() : window.PORTAL_LIVE_PAYLOAD)
-      : await requestPortalPayloadWithRetry({manual});
+    let payload;
+    try {
+      payload = await requestStaticPortalPayload();
+    } catch (_) {
+      payload = await requestPortalPayloadWithRetry({manual});
+    }
     const nextData = payload && payload.data ? payload.data : payload;
     if (!isValidPortalData(nextData)) throw new Error('Respuesta de datos inválida');
 
