@@ -843,7 +843,7 @@ function barClass(p) {
 function badgeFor(c) {
   if (c.clases_pendientes===0) return ['badge-done','Finalizado'];
   if (c.porcentaje>=85)        return ['badge-close','Por terminar'];
-  if (c.porcentaje<20)         return ['badge-early','Por iniciar · a confirmar'];
+  if (c.clases_dadas===0)      return ['badge-early','Por iniciar · a confirmar'];
   return ['badge-active','En curso'];
 }
 
